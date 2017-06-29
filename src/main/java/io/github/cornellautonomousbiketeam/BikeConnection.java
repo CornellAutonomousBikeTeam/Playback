@@ -2,20 +2,57 @@ package io.github.cornellautonomousbiketeam;
 
 import java.awt.*;
 import java.io.*;
+import java.util.Vector;
 import javax.swing.*;
 
 import com.jcraft.jsch.*;
 
 /**
- * Handles file transfer. No bike-specific code should go in here;
- * all this class knows about is how to scp.
+ * Handles file transfer. All this class knows about is how to
+ * do basic file operations while connected to the bike.
  *
  * This code is based on this gist:
  * https://gist.github.com/ymnk/2318108#file-scpfrom-java
  */
-public abstract class FileCopier {
+public class BikeConnection {
     public static final int SSH_PORT = 22;
+    public static final int SFTP_PORT = 22;
     public static final int BUFFER_SIZE = 1024;
+
+    /**
+     * Lists the remote files.
+     *
+     * Uses some code from https://stackoverflow.com/a/35359010/1757964
+     *
+     * @param user The username used to log in.
+     * @param host The hostname (e.g. IP address) of the remote device.
+     * @param dir A path to the directory we'll list.
+     * @return A Vector of LsEntry objects
+     */
+    public static Vector ls( String user, String host, String dir ) {
+        try {
+            JSch jsch = new JSch();
+            Session session = jsch.getSession( user, host, SFTP_PORT );
+            session.setUserInfo( new MyUserInfo() );
+
+            // A bit of configuration
+            java.util.Properties config = new java.util.Properties();
+            config.put( "StrictHostKeyChecking", "no" );
+            session.setConfig( config );
+            session.connect();
+
+            Channel channel = session.openChannel( "sftp" );
+            channel.connect();
+
+            ChannelSftp channelSftp = (ChannelSftp)channel;
+            channelSftp.cd( dir );
+
+            return channelSftp.ls( dir );
+        } catch( Exception e ) {
+            System.out.println( e );
+            return new Vector();
+        }
+    }
 
     /**
      * Copies a file from the remote host to the local path.
