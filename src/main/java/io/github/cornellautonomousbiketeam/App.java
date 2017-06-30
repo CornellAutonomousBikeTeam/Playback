@@ -1,17 +1,21 @@
 package io.github.cornellautonomousbiketeam;
 
+import java.awt.BorderLayout;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Vector;
+import javax.swing.BorderFactory;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
 
 import com.jcraft.jsch.ChannelSftp.LsEntry;
 
 import io.github.cornellautonomousbiketeam.BikeConnection;
-import io.github.cornellautonomousbiketeam.TimedBikeState;
 import io.github.cornellautonomousbiketeam.CsvParser;
+import io.github.cornellautonomousbiketeam.TimedBikeState;
 
 public class App {
     public static final String BAGFILE_LOCATION =
@@ -25,6 +29,7 @@ public class App {
         try {
             List<TimedBikeState> bikeStates = CsvParser.parseFile( csvFile );
             System.out.println( bikeStates.iterator().next() );
+            displayCsvInWindow( bikeStates );
         } catch( IOException e ) {
             e.printStackTrace();
         }
@@ -69,5 +74,18 @@ public class App {
         System.out.println( "Done!" );
 
         return new File( localPath );
+    }
+
+    public static void displayCsvInWindow( List<TimedBikeState> states ) {
+        JFrame frame = new JFrame( "GPS Simulator 2017" );
+        JPanel mainPanel = new JPanel( new BorderLayout() );
+        mainPanel.setBorder( BorderFactory.createEmptyBorder( 5, 5, 5, 5 ) );
+        GpsPanel gpsPanel = new GpsPanel( states );
+        mainPanel.add( gpsPanel );
+        frame.add( mainPanel );
+        frame.setSize( 800, 600 );
+        frame.setLocationByPlatform( true );
+        frame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
+        frame.setVisible( true );
     }
 }

@@ -30,8 +30,8 @@ public abstract class CsvParser {
             tokens = currLine.split( "," );
             currTimestamp = new Date( (long)( Float.parseFloat( tokens[0] ) / 1000000 ) );
             result.add( new TimedBikeState( currTimestamp,
-                        Float.parseFloat( tokens[1] ),
-                        Float.parseFloat( tokens[2] ) ) );
+                        Float.parseFloat( tokens[2] ),
+                        Float.parseFloat( tokens[3] ) ) );
         }
 
         return result;
