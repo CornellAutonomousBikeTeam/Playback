@@ -47,7 +47,9 @@ public class BikeConnection {
             ChannelSftp channelSftp = (ChannelSftp)channel;
             channelSftp.cd( dir );
 
-            return channelSftp.ls( dir );
+            Vector result = channelSftp.ls( dir );
+            session.disconnect();
+            return result;
         } catch( Exception e ) {
             System.out.println( e );
             return new Vector();
@@ -90,7 +92,7 @@ public class BikeConnection {
             OutputStream out = channel.getOutputStream();
             InputStream in = channel.getInputStream();
 
-            System.out.println( "IO streams obtained." );
+            System.out.println( "[BikeConnection.copy] IO streams obtained." );
 
             // Open the channel to the server
             channel.connect();
@@ -105,8 +107,8 @@ public class BikeConnection {
             while( true ) {
                 int c = checkAck( in );
                 if( c != 'C' ) {
-                    System.out.println( "checkAck gave a " + c +
-                            " instead of a C, terminating" );
+                    System.out.println( "[BikeConnection.copy] checkAck gave " +
+                            "a " + c + " instead of a C, terminating" );
                     break;
                 }
 
@@ -143,7 +145,8 @@ public class BikeConnection {
                 // Read data from the remote file
                 String trueLocalFile = prefix == null ? localFile :
                     prefix + file;
-                System.out.println( "Writing to " + trueLocalFile );
+                System.out.println( "[BikeConnection.copy] Writing to " +
+                        trueLocalFile );
                 fos = new FileOutputStream( trueLocalFile );
 
                 // Variable name in original
@@ -166,7 +169,8 @@ public class BikeConnection {
                 fos = null;
 
                 if( checkAck( in ) != 0 ) {
-                    System.out.println( "A fatal error has occurred!" );
+                    System.out.println( "[BikeConnection.copy] A fatal error " +
+                            "has occurred!" );
                     System.exit( 0 );
                 }
 
@@ -184,7 +188,7 @@ public class BikeConnection {
                     fos.close();
                 }
             } catch( Exception ee ) {
-                System.out.println( "Double exception" );
+                System.out.println( "[BikeConnection.copy] Double exception" );
                 System.out.println( ee );
             }
         }
