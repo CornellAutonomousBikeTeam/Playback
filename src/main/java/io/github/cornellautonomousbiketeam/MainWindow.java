@@ -1,13 +1,17 @@
 package io.github.cornellautonomousbiketeam;
 
 import java.awt.BorderLayout;
+import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
+
+import com.jcraft.jsch.ChannelSftp.LsEntry;
 
 import io.github.cornellautonomousbiketeam.App;
 
@@ -17,6 +21,7 @@ public class MainWindow {
     private JTextField saveLocField;
     private JComboBox<String> recentLocalComboBox;
     private JTextField remoteIpField;
+    private JComboBox<String> recentRemoteComboBox;
 
     private File saveLocation = new File( App.DEFAULT_SAVE_FOLDER );
 
@@ -61,20 +66,32 @@ public class MainWindow {
         recentLocalInnerPanel.add( recentLocalBrowse );
         recentLocalPanel.add( recentLocalInnerPanel, BorderLayout.WEST );
 
-        JPanel remotePanel = new JPanel( new BorderLayout() );
+        JPanel remotePanel = new JPanel( new GridLayout( 2, 1 ) );
+        // remotePanel.setLayout( new BoxLayout( remotePanel, BoxLayout.Y_AXIS ) );
         remotePanel.setBorder( BorderFactory.createTitledBorder( "Remote CSVs" ) );
-        JPanel remoteNorthPanel = new JPanel();
-        remoteNorthPanel.add( new JLabel( "Connected to bike at " ) );
+        JPanel remoteIpPanel = new JPanel();
+        remoteIpPanel.add( new JLabel( "Connected to bike at " ) );
         remoteIpField = new JTextField( 20 );
         remoteIpField.setText( App.DEFAULT_IP_ADDRESS );
-        remoteNorthPanel.add( remoteIpField );
-        JButton remoteButton = new JButton( "Download and display latest CSV" );
+        remoteIpPanel.add( remoteIpField );
+        JPanel remoteListPanel = new JPanel();
+        remoteListPanel.add( new JLabel( "Download and open recent:" ) );
+        recentRemoteComboBox = new JComboBox();
+        recentRemoteComboBox.setEditable( false );
+        remoteListPanel.add( recentRemoteComboBox );
+        JButton remoteRefreshButton = new JButton( "Refresh list" );
+        remoteRefreshButton.addActionListener( event -> { refresh(); } );
+        remoteListPanel.add( remoteRefreshButton );
+        JButton remoteButton = new JButton( "Open" );
         remoteButton.setName( "remoteButton" );
         remoteButton.addActionListener( new GlobalListener() );
-        remotePanel.add( remoteButton, BorderLayout.CENTER );
-        JPanel remoteNorthWrapperPanel = new JPanel( new BorderLayout() );
-        remoteNorthWrapperPanel.add( remoteNorthPanel, BorderLayout.WEST );
-        remotePanel.add( remoteNorthWrapperPanel, BorderLayout.NORTH );
+        remoteListPanel.add( remoteButton );
+        // remoteIpPanel.setAlignmentX( Component.LEFT_ALIGNMENT );
+        // remoteIpPanel.setAlignmentY( Component.TOP_ALIGNMENT );
+        // remoteListPanel.setAlignmentX( Component.LEFT_ALIGNMENT );
+        // remoteListPanel.setAlignmentY( Component.TOP_ALIGNMENT );
+        remotePanel.add( remoteIpPanel );
+        remotePanel.add( remoteListPanel );
 
         frame = new JFrame( "GUI Simulator 2017 - Select CSV" );
         JPanel containerPanel = new JPanel( new BorderLayout() );
@@ -83,8 +100,8 @@ public class MainWindow {
         northPanel.setLayout( new BoxLayout( northPanel, BoxLayout.Y_AXIS ) );
         northPanel.add( saveLocPanel );
         northPanel.add( recentLocalPanel );
+        northPanel.add( remotePanel );
         containerPanel.add( northPanel, BorderLayout.NORTH );
-        containerPanel.add( remotePanel, BorderLayout.CENTER );
         frame.add( containerPanel );
         frame.setSize( 625, 300 );
         frame.setLocationByPlatform( true );
@@ -113,6 +130,49 @@ public class MainWindow {
             }
 
             recentLocalComboBox.addItem( fileName );
+        }
+
+        refreshRemoteDropdown();
+    }
+
+    /**
+     * Updates the dropdown in the "Remote CSVs" panel
+     */
+    private void refreshRemoteDropdown() {
+        ( new Thread( () -> {
+            try {
+                recentRemoteComboBox.removeAllItems();
+                String ipAddress = getValidatedIpAddress();
+                if( ipAddress == null ) {
+                    return;
+                }
+                List<LsEntry> list = BikeConnection.ls( "pi", ipAddress, App.BAGFILE_LOCATION );
+                List<String> strings = list.stream()
+                    .sorted( ( entry1, entry2 ) ->
+                             entry2.getAttrs().getMTime() - entry1.getAttrs().getMTime() )
+                    .filter( entry -> entry.getFilename().startsWith( "gps" ) )
+                    .limit( 10 )
+                    .map( LsEntry::getFilename )
+                    .collect( Collectors.toList() );
+                SwingUtilities.invokeLater( () -> { strings.stream().forEach( recentRemoteComboBox::addItem ); } );
+            } catch( Exception e ) {
+                e.printStackTrace();
+            }
+        } ) ).start();
+    }
+
+    /**
+     * Reads the IP address from the field in the "Remote CSVs" panel,
+     * then validates it.
+     *
+     * @return The IP address if it's valid, null if it's not
+     */
+    private String getValidatedIpAddress() {
+        String ipAddress = remoteIpField.getText();
+        if( Helper.validateIpAddress( ipAddress ) ) {
+            return ipAddress;
+        } else {
+            return null;
         }
     }
 
@@ -148,15 +208,25 @@ public class MainWindow {
                     }
                 } else if( buttonName.equals( "remoteButton" ) ) {
                     try {
-                        String ipAddress = remoteIpField.getText();
-                        if( !Helper.validateIpAddress( ipAddress ) ) {
-                            JOptionPane.showConfirmDialog( frame, "Invalid IP address!", "Error while connecting to bike", JOptionPane.ERROR_MESSAGE );
+                        String ipAddress = getValidatedIpAddress();
+                        if( ipAddress == null ) {
+                            JOptionPane.showConfirmDialog( frame,
+                                    "Invalid IP address!",
+                                    "Error while connecting to bike",
+                                    JOptionPane.ERROR_MESSAGE );
                             return;
                         }
-                        File csvFile = App.downloadLatestCsvWithPrefix( "gps", ipAddress, saveLocation );
+                        String filename = (String)recentRemoteComboBox.getSelectedItem();
+                        String fullRemotePath = App.BAGFILE_LOCATION + "/" + filename;
+
+                        String localPath = ( new File( saveLocation, filename ) ).getAbsolutePath();
+
+                        System.out.println( String.format( "Downloading from %s to %s...", fullRemotePath, localPath ) );
+
+                        File csvFile = BikeConnection.copy( "pi", ipAddress, fullRemotePath, localPath );
                         List<TimedBikeState> bikeStates = CsvParser.parseFile( csvFile );
                         App.displayCsvInWindow( bikeStates );
-                    } catch( IOException e ) {
+                    } catch( Exception e ) {
                         e.printStackTrace();
                     }
                 }

@@ -1,11 +1,17 @@
 package io.github.cornellautonomousbiketeam;
 
-import java.awt.*;
+import java.awt.Container;
+import java.awt.Insets;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Vector;
 import javax.swing.*;
 
 import com.jcraft.jsch.*;
+import com.jcraft.jsch.ChannelSftp.LsEntry;
 
 /**
  * Handles file transfer. All this class knows about is how to
@@ -27,9 +33,9 @@ public class BikeConnection {
      * @param user The username used to log in.
      * @param host The hostname (e.g. IP address) of the remote device.
      * @param dir A path to the directory we'll list.
-     * @return A Vector of LsEntry objects
+     * @return A List of LsEntry objects
      */
-    public static Vector ls( String user, String host, String dir ) {
+    public static List<LsEntry> ls( String user, String host, String dir ) {
         try {
             JSch jsch = new JSch();
             Session session = jsch.getSession( user, host, SFTP_PORT );
@@ -49,10 +55,10 @@ public class BikeConnection {
 
             Vector result = channelSftp.ls( dir );
             session.disconnect();
-            return result;
+            return Helper.vectorToLsEntryList( result );
         } catch( Exception e ) {
             System.out.println( e );
-            return new Vector();
+            return new ArrayList<LsEntry>();
         }
     }
 
@@ -64,8 +70,10 @@ public class BikeConnection {
      * @param remoteFile A path to the remote file. (For the Pi, start with a /)
      * @param localFile A path to the local destination. There shouldn't be a
      *                  file here yet.
+     * @return The local file that resulted from the copy operation, or null if
+     *                  there was an error.
      */
-    public static void copy( String user, String host, String remoteFile, String localFile ) {
+    public static File copy( String user, String host, String remoteFile, String localFile ) {
 
         // Process localFile a bit
         String prefix = null;
@@ -103,6 +111,9 @@ public class BikeConnection {
             buffer[0] = 0;
             out.write( buffer, 0, 1 );
             out.flush();
+
+            // Stores the filename during the loop
+            String trueLocalFile = null;
 
             while( true ) {
                 int c = checkAck( in );
@@ -143,7 +154,7 @@ public class BikeConnection {
                 out.flush();
 
                 // Read data from the remote file
-                String trueLocalFile = prefix == null ? localFile :
+                trueLocalFile = prefix == null ? localFile :
                     prefix + file;
                 System.out.println( "[BikeConnection.copy] Writing to " +
                         trueLocalFile );
@@ -181,6 +192,8 @@ public class BikeConnection {
             }
 
             session.disconnect();
+
+            return new File( trueLocalFile );
         } catch( Exception e ) {
             System.out.println( e );
             try {
@@ -190,6 +203,8 @@ public class BikeConnection {
             } catch( Exception ee ) {
                 System.out.println( "[BikeConnection.copy] Double exception" );
                 System.out.println( ee );
+            } finally {
+                return null;
             }
         }
     }

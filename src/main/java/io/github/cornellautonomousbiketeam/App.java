@@ -4,7 +4,6 @@ import java.awt.BorderLayout;
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Vector;
 import javax.swing.BorderFactory;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -54,13 +53,11 @@ public class App {
     public static File downloadLatestCsvWithPrefix( String prefix, String ipAddress, File saveFolder ) {
 
         // List all the CSVs and get the last-modified one with the prefix
-        Vector list = BikeConnection.ls( "pi", ipAddress, BAGFILE_LOCATION );
+        List<LsEntry> list = BikeConnection.ls( "pi", ipAddress, BAGFILE_LOCATION );
         int maxMTime = 0;
         String lastModifiedFilename = null;
-        LsEntry currEntry = null;
         int currMTime = 0;
-        for( Object obj : list ) {
-            currEntry = (LsEntry)obj;
+        for( LsEntry currEntry : list ) {
             if( !currEntry.getFilename().startsWith( prefix ) ) {
                 continue;
             }
