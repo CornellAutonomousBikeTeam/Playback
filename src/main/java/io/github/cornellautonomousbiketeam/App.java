@@ -2,19 +2,19 @@ package io.github.cornellautonomousbiketeam;
 
 import java.awt.BorderLayout;
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Vector;
 import javax.swing.BorderFactory;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 import com.jcraft.jsch.ChannelSftp.LsEntry;
 
 import io.github.cornellautonomousbiketeam.BikeConnection;
-import io.github.cornellautonomousbiketeam.CsvParser;
+import io.github.cornellautonomousbiketeam.MainWindow;
 import io.github.cornellautonomousbiketeam.TimedBikeState;
 
 public class App {
@@ -22,23 +22,39 @@ public class App {
         "/home/pi/ros_ws/src/bike/bagfiles";
     public static final String DEFAULT_SAVE_FOLDER =
         "/home/daniel/Desktop";
+    public static final String DEFAULT_IP_ADDRESS = "10.0.1.25";
 
     public static void main( String[] args ) {
-        //File csv = downloadLatestCsvWithPrefix( "gps" );
-        File csvFile = new File( "/home/daniel/Desktop/gps_2017-06-29~~04-53-26-PM.csv" );
-        try {
-            List<TimedBikeState> bikeStates = CsvParser.parseFile( csvFile );
-            System.out.println( bikeStates.iterator().next() );
-            displayCsvInWindow( bikeStates );
-        } catch( IOException e ) {
-            e.printStackTrace();
-        }
+        ( new MainWindow() ).setVisible( true );
     }
 
     public static File downloadLatestCsvWithPrefix( String prefix ) {
 
+        // Get IP
+        String ipAddress = (String)JOptionPane.showInputDialog( null,
+                "Bike IP Address?", "Connecting to bike...",
+                JOptionPane.PLAIN_MESSAGE, null, null, DEFAULT_IP_ADDRESS );
+        if( ipAddress == null || ipAddress.length() == 0 ) {
+            ipAddress = DEFAULT_IP_ADDRESS;
+        }
+
+        // Decide where to save
+        File saveFolder = new File( DEFAULT_SAVE_FOLDER );
+
+        final JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setFileSelectionMode( JFileChooser.DIRECTORIES_ONLY );
+        int result = fileChooser.showOpenDialog( null );
+        if( result == JFileChooser.APPROVE_OPTION ) {
+            saveFolder = fileChooser.getSelectedFile();
+        }
+
+        return downloadLatestCsvWithPrefix( prefix, ipAddress, saveFolder );
+    }
+
+    public static File downloadLatestCsvWithPrefix( String prefix, String ipAddress, File saveFolder ) {
+
         // List all the CSVs and get the last-modified one with the prefix
-        Vector list = BikeConnection.ls( "pi", "10.0.1.25", BAGFILE_LOCATION );
+        Vector list = BikeConnection.ls( "pi", ipAddress, BAGFILE_LOCATION );
         int maxMTime = 0;
         String lastModifiedFilename = null;
         LsEntry currEntry = null;
@@ -56,22 +72,14 @@ public class App {
             }
         }
 
-        String fullRemotePath = Paths.get( BAGFILE_LOCATION,
+        String fullRemotePath = BAGFILE_LOCATION + "/" + lastModifiedFilename;
+
+        String localPath = Paths.get( saveFolder.getPath(),
                 lastModifiedFilename ).toString();
 
-        // Decide where to save
-        File chosenFile = new File( DEFAULT_SAVE_FOLDER );
-        final JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setFileSelectionMode( JFileChooser.DIRECTORIES_ONLY );
-        int result = fileChooser.showOpenDialog( null );
-        if( result == JFileChooser.APPROVE_OPTION ) {
-            chosenFile = fileChooser.getSelectedFile();
-        }
-        String localPath = Paths.get( chosenFile.getPath(),
-                lastModifiedFilename ).toString();
+        System.out.println( String.format( "Downloading from %s to %s...", fullRemotePath, localPath ) );
 
-        BikeConnection.copy( "pi", "10.0.1.25", fullRemotePath, localPath );
-        System.out.println( "Done!" );
+        BikeConnection.copy( "pi", ipAddress, fullRemotePath, localPath );
 
         return new File( localPath );
     }
@@ -85,7 +93,7 @@ public class App {
         frame.add( mainPanel );
         frame.setSize( 800, 600 );
         frame.setLocationByPlatform( true );
-        frame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
+        frame.setDefaultCloseOperation( JFrame.DISPOSE_ON_CLOSE );
         frame.setVisible( true );
     }
 }

@@ -26,12 +26,23 @@ public abstract class CsvParser {
 
         String[] tokens;
         Date currTimestamp;
+        float lat;
+        float lng;
         while( ( currLine = reader.readLine() ) != null ) {
             tokens = currLine.split( "," );
             currTimestamp = new Date( (long)( Float.parseFloat( tokens[0] ) / 1000000 ) );
-            result.add( new TimedBikeState( currTimestamp,
-                        Float.parseFloat( tokens[2] ),
-                        Float.parseFloat( tokens[3] ) ) );
+            lat = Float.parseFloat( tokens[2] );
+            lng = Float.parseFloat( tokens[3] );
+
+            // Some sanity checks
+            if( lat < 40 || lat > 50 ) {
+                continue;
+            }
+            if( lng < -80 || lng > -70 ) {
+                continue;
+            }
+
+            result.add( new TimedBikeState( currTimestamp, lng, lat ) );
         }
 
         return result;
