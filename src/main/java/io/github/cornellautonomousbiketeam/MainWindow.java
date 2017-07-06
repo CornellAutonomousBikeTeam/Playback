@@ -95,7 +95,7 @@ public class MainWindow {
         remotePanel.add( remoteIpPanel );
         remotePanel.add( remoteListPanel );
 
-        frame = new JFrame( "GUI Simulator 2017 - Select CSV" );
+        frame = new JFrame( "Playback - Select CSV" );
         JPanel containerPanel = new JPanel( new BorderLayout() );
         containerPanel.setBorder( BorderFactory.createEmptyBorder( 10, 10, 10, 10 ) );
         JPanel northPanel = new JPanel();
