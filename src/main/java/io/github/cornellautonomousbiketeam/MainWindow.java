@@ -21,13 +21,14 @@ public class MainWindow {
     private JTextField saveLocField;
     private JComboBox<String> recentLocalComboBox;
     private JTextField remoteIpField;
+    private JButton remoteRefreshButton;
     private JComboBox<String> recentRemoteComboBox;
 
-    private File saveLocation = new File( App.DEFAULT_SAVE_FOLDER );
+    private File saveLocation = App.DEFAULT_SAVE_FOLDER;
 
     public MainWindow() {
         buildGui();
-        refresh();
+        //refresh();
     }
 
     public void setVisible( boolean visible ) {
@@ -79,8 +80,9 @@ public class MainWindow {
         recentRemoteComboBox = new JComboBox();
         recentRemoteComboBox.setEditable( false );
         remoteListPanel.add( recentRemoteComboBox );
-        JButton remoteRefreshButton = new JButton( "Refresh list" );
-        remoteRefreshButton.addActionListener( event -> { refresh(); } );
+        remoteRefreshButton = new JButton( "Refresh list" );
+        remoteRefreshButton.setName( "remoteRefreshButton" );
+        remoteRefreshButton.addActionListener( new GlobalListener() );
         remoteListPanel.add( remoteRefreshButton );
         JButton remoteButton = new JButton( "Open" );
         remoteButton.setName( "remoteButton" );
@@ -139,9 +141,9 @@ public class MainWindow {
      * Updates the dropdown in the "Remote CSVs" panel
      */
     private void refreshRemoteDropdown() {
+        recentRemoteComboBox.removeAllItems();
         ( new Thread( () -> {
             try {
-                recentRemoteComboBox.removeAllItems();
                 String ipAddress = getValidatedIpAddress();
                 if( ipAddress == null ) {
                     return;
@@ -154,7 +156,10 @@ public class MainWindow {
                     .limit( 10 )
                     .map( LsEntry::getFilename )
                     .collect( Collectors.toList() );
-                SwingUtilities.invokeLater( () -> { strings.stream().forEach( recentRemoteComboBox::addItem ); } );
+                SwingUtilities.invokeLater( () -> {
+                    remoteRefreshButton.setEnabled( true );
+                    strings.stream().forEach( recentRemoteComboBox::addItem );
+                } );
             } catch( Exception e ) {
                 e.printStackTrace();
             }
@@ -229,6 +234,9 @@ public class MainWindow {
                     } catch( Exception e ) {
                         e.printStackTrace();
                     }
+                } else if( buttonName.equals( "remoteRefreshButton" ) ) {
+                    remoteRefreshButton.setEnabled( false );
+                    refresh();
                 }
             }
         }

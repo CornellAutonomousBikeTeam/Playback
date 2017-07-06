@@ -9,6 +9,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.filechooser.FileSystemView;
 
 import com.jcraft.jsch.ChannelSftp.LsEntry;
 
@@ -19,12 +20,21 @@ import io.github.cornellautonomousbiketeam.TimedBikeState;
 public class App {
     public static final String BAGFILE_LOCATION =
         "/home/pi/ros_ws/src/bike/bagfiles";
-    public static final String DEFAULT_SAVE_FOLDER =
-        "/home/daniel/Desktop";
+    public static final File DEFAULT_SAVE_FOLDER;
     public static final String DEFAULT_IP_ADDRESS = "10.0.1.25";
 
     public static void main( String[] args ) {
         ( new MainWindow() ).setVisible( true );
+    }
+
+    static {
+        File saveFolder = FileSystemView.getFileSystemView().getHomeDirectory();
+        File desktop = new File( saveFolder, "Desktop" );
+        if( desktop.exists() && desktop.isDirectory() ) {
+            DEFAULT_SAVE_FOLDER = desktop;
+        } else {
+            DEFAULT_SAVE_FOLDER = saveFolder;
+        }
     }
 
     public static File downloadLatestCsvWithPrefix( String prefix ) {
@@ -38,13 +48,15 @@ public class App {
         }
 
         // Decide where to save
-        File saveFolder = new File( DEFAULT_SAVE_FOLDER );
+        File saveFolder = null;
 
         final JFileChooser fileChooser = new JFileChooser();
         fileChooser.setFileSelectionMode( JFileChooser.DIRECTORIES_ONLY );
         int result = fileChooser.showOpenDialog( null );
         if( result == JFileChooser.APPROVE_OPTION ) {
             saveFolder = fileChooser.getSelectedFile();
+        } else {
+            saveFolder = DEFAULT_SAVE_FOLDER;
         }
 
         return downloadLatestCsvWithPrefix( prefix, ipAddress, saveFolder );
