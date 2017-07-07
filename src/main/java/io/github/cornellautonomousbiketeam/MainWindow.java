@@ -1,6 +1,7 @@
 package io.github.cornellautonomousbiketeam;
 
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -24,11 +25,14 @@ public class MainWindow {
     private JButton remoteRefreshButton;
     private JComboBox<String> recentRemoteComboBox;
 
-    private File saveLocation = App.DEFAULT_SAVE_FOLDER;
+    private File saveLocation;
+
+    public static final Dimension COMBO_BOX_SIZE = new Dimension( 265, 24 );
 
     public MainWindow() {
         buildGui();
-        //refresh();
+        saveLocation = App.DEFAULT_SAVE_FOLDER;
+        refresh( false );
     }
 
     public void setVisible( boolean visible ) {
@@ -55,6 +59,7 @@ public class MainWindow {
         recentLocalInnerPanel.add( new JLabel( "Open recent:" ) );
         recentLocalComboBox = new JComboBox();
         recentLocalComboBox.setEditable( false );
+        recentLocalComboBox.setPreferredSize( COMBO_BOX_SIZE );
         recentLocalInnerPanel.add( recentLocalComboBox );
         JButton recentLocalOpen = new JButton( "Open" );
         recentLocalOpen.setName( "recentLocalOpen" );
@@ -68,30 +73,33 @@ public class MainWindow {
         recentLocalPanel.add( recentLocalInnerPanel, BorderLayout.WEST );
 
         JPanel remotePanel = new JPanel( new GridLayout( 2, 1 ) );
-        // remotePanel.setLayout( new BoxLayout( remotePanel, BoxLayout.Y_AXIS ) );
-        remotePanel.setBorder( BorderFactory.createTitledBorder( "Remote CSVs" ) );
+        ( (GridLayout)remotePanel.getLayout() ).setVgap( 5 );
+        remotePanel.setBorder( BorderFactory.createCompoundBorder(
+                    BorderFactory.createTitledBorder( "Remote CSVs" ),
+                    BorderFactory.createEmptyBorder( 5, 5, 5, 5 ) ) );
         JPanel remoteIpPanel = new JPanel();
+        remoteIpPanel.setLayout( new BoxLayout( remoteIpPanel, BoxLayout.X_AXIS ) );
         remoteIpPanel.add( new JLabel( "Connected to bike at " ) );
         remoteIpField = new JTextField( 20 );
         remoteIpField.setText( App.DEFAULT_IP_ADDRESS );
         remoteIpPanel.add( remoteIpField );
-        JPanel remoteListPanel = new JPanel();
-        remoteListPanel.add( new JLabel( "Download and open recent:" ) );
-        recentRemoteComboBox = new JComboBox();
-        recentRemoteComboBox.setEditable( false );
-        remoteListPanel.add( recentRemoteComboBox );
-        remoteRefreshButton = new JButton( "Refresh list" );
+        remoteIpPanel.add( Box.createHorizontalStrut( 5 ) );
+        remoteRefreshButton = new JButton( "Download CSV list" );
         remoteRefreshButton.setName( "remoteRefreshButton" );
         remoteRefreshButton.addActionListener( new GlobalListener() );
-        remoteListPanel.add( remoteRefreshButton );
+        remoteIpPanel.add( remoteRefreshButton );
+        JPanel remoteListPanel = new JPanel();
+        remoteListPanel.setLayout( new BoxLayout( remoteListPanel, BoxLayout.X_AXIS ) );
+        remoteListPanel.add( new JLabel( "Download and open recent: " ) );
+        recentRemoteComboBox = new JComboBox();
+        recentRemoteComboBox.setEditable( false );
+        recentRemoteComboBox.setPreferredSize( COMBO_BOX_SIZE );
+        remoteListPanel.add( recentRemoteComboBox );
+        remoteListPanel.add( Box.createHorizontalStrut( 5 ) );
         JButton remoteButton = new JButton( "Open" );
         remoteButton.setName( "remoteButton" );
         remoteButton.addActionListener( new GlobalListener() );
         remoteListPanel.add( remoteButton );
-        // remoteIpPanel.setAlignmentX( Component.LEFT_ALIGNMENT );
-        // remoteIpPanel.setAlignmentY( Component.TOP_ALIGNMENT );
-        // remoteListPanel.setAlignmentX( Component.LEFT_ALIGNMENT );
-        // remoteListPanel.setAlignmentY( Component.TOP_ALIGNMENT );
         remotePanel.add( remoteIpPanel );
         remotePanel.add( remoteListPanel );
 
@@ -105,15 +113,17 @@ public class MainWindow {
         northPanel.add( remotePanel );
         containerPanel.add( northPanel, BorderLayout.NORTH );
         frame.add( containerPanel );
-        frame.setSize( 625, 300 );
+        frame.pack();
         frame.setLocationByPlatform( true );
         frame.setDefaultCloseOperation( JFrame.DISPOSE_ON_CLOSE );
     }
 
     /**
      * Refreshes the contents of all of the labels and stuff.
+     *
+     * @param remote True if we should refresh the remote dropdown as well.
      */
-    public void refresh() {
+    public void refresh( boolean remote ) {
 
         // Update the "Current save location" field
         saveLocField.setText( saveLocation.getAbsolutePath() );
@@ -134,7 +144,9 @@ public class MainWindow {
             recentLocalComboBox.addItem( fileName );
         }
 
-        refreshRemoteDropdown();
+        if( remote ) {
+            refreshRemoteDropdown();
+        }
     }
 
     /**
@@ -215,7 +227,7 @@ public class MainWindow {
                     try {
                         String ipAddress = getValidatedIpAddress();
                         if( ipAddress == null ) {
-                            JOptionPane.showConfirmDialog( frame,
+                            JOptionPane.showMessageDialog( frame,
                                     "Invalid IP address!",
                                     "Error while connecting to bike",
                                     JOptionPane.ERROR_MESSAGE );
@@ -235,8 +247,27 @@ public class MainWindow {
                         e.printStackTrace();
                     }
                 } else if( buttonName.equals( "remoteRefreshButton" ) ) {
+
+                    // Validate IP address
+                    String ipAddress = getValidatedIpAddress();
+                    if( ipAddress == null ) {
+                        JOptionPane.showMessageDialog( frame,
+                                "Invalid IP address!",
+                                "Error while connecting to bike",
+                                JOptionPane.ERROR_MESSAGE );
+                        return;
+                    }
                     remoteRefreshButton.setEnabled( false );
-                    refresh();
+                    refresh( true );
+                } else if( buttonName.equals( "saveLocBrowse" ) ) {
+                    final JFileChooser fileChooser = new JFileChooser();
+                    fileChooser.setFileSelectionMode( JFileChooser.DIRECTORIES_ONLY );
+                    int result = fileChooser.showOpenDialog( frame );
+                    if( result != JFileChooser.APPROVE_OPTION ) {
+                        return;
+                    }
+                    saveLocation = fileChooser.getSelectedFile();
+                    refresh( false );
                 }
             }
         }
