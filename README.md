@@ -9,7 +9,7 @@ The easiest way to run this tool is to get the latest JAR file from [the "Releas
 
 You can build this tool with Maven, using the command `mvn package`. It'll make a runnable JAR file in the `target/` folder. 
 
-Here's a screenshot of the main window. (Tip: Can't see all the buttons? Make the window wider.)
+Here's a screenshot of the main window.
 
 ![Screenshot][2]
 
@@ -18,5 +18,5 @@ And of the tool displaying some GPS data:
 ![Screenshot of display][3]
 
   [1]: https://github.com/CornellAutonomousBikeTeam/Playback/releases
-  [2]: https://user-images.githubusercontent.com/1981364/27932157-bdc0860e-626a-11e7-8f82-140c347a98c9.png
+  [2]: https://user-images.githubusercontent.com/1981364/27975744-77f1a6b8-6331-11e7-949c-48fe8cc5a42e.png
   [3]: https://user-images.githubusercontent.com/1981364/27932057-47698852-626a-11e7-8d3b-456b2ec7635a.png
