@@ -7,7 +7,7 @@ This tool has two main functions: downloading CSV files from the bike, and displ
 
 The easiest way to run this tool is to get the latest JAR file from [the "Releases" section][1]. You'll need Java 8.
 
-You can build this tool with Maven, using the command `mvn package`. Two JARs will be created in target/ - you'll want to run the one ending in `-jar-with-dependencies` one, because it has all the libraries bundled.
+You can build this tool with Maven, using the command `mvn package`. It'll make a runnable JAR file in the `target/` folder. 
 
 Here's a screenshot of the main window. (Tip: Can't see all the buttons? Make the window wider.)
 
