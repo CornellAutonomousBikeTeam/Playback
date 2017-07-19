@@ -206,8 +206,12 @@ public class MainWindow {
                                 (String)recentLocalComboBox.getSelectedItem() );
                         List<TimedBikeState> bikeStates = CsvParser.parseFile( csvFile );
                         App.displayCsvInWindow( bikeStates );
-                    } catch( IOException e ) {
+                    } catch( Exception e ) {
                         e.printStackTrace();
+                        JOptionPane.showMessageDialog( frame,
+                                "Error: " + e.toString(),
+                                "Error while opening CSV file",
+                                JOptionPane.ERROR_MESSAGE );
                     }
                 } else if( buttonName.equals( "recentLocalBrowse" ) ) {
                     try {

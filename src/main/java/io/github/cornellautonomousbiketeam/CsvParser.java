@@ -30,6 +30,9 @@ public abstract class CsvParser {
         float lng;
         while( ( currLine = reader.readLine() ) != null ) {
             tokens = currLine.split( "," );
+            if( tokens.length == 0 ) {
+                continue;
+            }
             currTimestamp = new Date( (long)( Float.parseFloat( tokens[0] ) / 1000000 ) );
             lat = Float.parseFloat( tokens[2] );
             lng = Float.parseFloat( tokens[3] );
