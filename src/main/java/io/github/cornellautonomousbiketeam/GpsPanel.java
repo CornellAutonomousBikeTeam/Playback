@@ -10,6 +10,8 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.net.URL;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import javax.imageio.ImageIO;
@@ -39,17 +41,17 @@ public class GpsPanel extends JPanel {
     private BufferedImage backgroundImage;
 
     // Background image dimensions
-    public static final int BCKGRND_WIDTH = 1243;
-    public static final int BCKGRND_HEIGHT = 1167;
+    private int backgroundWidth;
+    private int backgroundHeight;
 
-    // Background image extents (tediously calculated)
-    public static final double BCKGRND_MIN_LAT = 42.442960;
-    public static final double BCKGRND_MAX_LAT = 42.445268;
-    public static final double BCKGRND_MIN_LNG = -76.485229;
-    public static final double BCKGRND_MAX_LNG = -76.481902;
+    // Background image extents
+    private double backgroundMinLat;
+    private double backgroundMaxLat;
+    private double backgroundMinLng;
+    private double backgroundMaxLng;
 
-    public static final double BCKGRND_LAT_EXTENT = BCKGRND_MAX_LAT - BCKGRND_MIN_LAT;
-    public static final double BCKGRND_LNG_EXTENT = BCKGRND_MAX_LNG - BCKGRND_MIN_LNG;
+    private double backgroundLatExtent;
+    private double backgroundLngExtent;
 
     // State variables for dragging
     private Point initialClick;
@@ -57,6 +59,10 @@ public class GpsPanel extends JPanel {
     private int dragYOffset;
     private int initialDragXOffset;
     private int initialDragYOffset;
+
+    // API constants
+    public static final String MAPS_API_ENDPOINT =
+        "https://maps.googleapis.com/maps/api/staticmap";
 
     public GpsPanel( List<TimedBikeState> p ) {
         points = p;
@@ -93,9 +99,21 @@ public class GpsPanel extends JPanel {
         lngExtent = maxLongitude - minLongitude;
 
         try {
-            backgroundImage = ImageIO.read( getClass().getResource( "/map.png" ) );
+            backgroundImage = fetchMapImage();
         } catch( IOException e ) {
-            e.printStackTrace();
+            try {
+                backgroundImage = ImageIO.read( getClass().getResource( "/map.png" ) );
+                backgroundWidth = 1243;
+                backgroundHeight = 1167;
+                backgroundMinLat = 42.442960;
+                backgroundMaxLat = 42.445268;
+                backgroundMinLng = -76.485229;
+                backgroundMaxLng = -76.481902;
+                backgroundLatExtent = backgroundMaxLat - backgroundMinLat;
+                backgroundLngExtent = backgroundMaxLng - backgroundMinLng;
+            } catch( IOException e2 ) {
+                e2.printStackTrace();
+            }
         }
 
         this.addMouseListener( new DragMouseListener() );
@@ -118,8 +136,7 @@ public class GpsPanel extends JPanel {
         g.setColor( Color.BLUE );
         int displayWidth = getWidth();
         int displayHeight = 200;
-        double longitudeRange = maxLongitude - minLongitude;
-        double pixelsPerLngDegree = displayWidth / longitudeRange;
+        double pixelsPerLngDegree = displayWidth / lngExtent;
 
         double worldMapWidth = ( displayHeight * 360 ) / ( pixelsPerLngDegree * 2 * Math.PI );
         double maxLatitudeRad = Math.toRadians( maxLatitude );
@@ -163,17 +180,19 @@ public class GpsPanel extends JPanel {
 
         latitude = latitude * Math.PI / 180;
         double worldMapWidth = ( ( mapWidth / mapLonDelta ) * 360 ) / ( 2 * Math.PI );
-        double mapOffsetY = ( worldMapWidth / 2 * Math.log( ( 1 + Math.sin( mapLatBottomDegree ) ) / ( 1 - Math.sin( mapLatBottomDegree ) ) ) );
-        double y = mapHeight - ( ( worldMapWidth / 2 * Math.log( ( 1 + Math.sin( latitude ) ) / ( 1 - Math.sin( latitude ) ) ) ) - mapOffsetY );
+        double mapOffsetY = worldMapWidth / 2 *
+            Math.log( ( 1 + Math.sin( mapLatBottomDegree ) ) /
+                    ( 1 - Math.sin( mapLatBottomDegree ) ) );
+        double y = mapHeight - ( ( worldMapWidth / 2 * Math.log( ( 1 + Math.sin( latitude ) ) /
+                        ( 1 - Math.sin( latitude ) ) ) ) - mapOffsetY );
 
         return new Point2D.Double( x, y );
     }
 
     public Point2D.Double convertGeoToPixel( double latitude, double longitude ) {
-        double x = ( longitude - minLongitude ) * ( getWidth() / lngExtent );
-        double y = - ( latitude - maxLatitude ) * ( getHeight() / latExtent );
-        //return new Point2D.Double( x, y );
-        return convertGeoToPixel( latitude, longitude, getWidth(), getHeight(), minLongitude, lngExtent, minLatitude, minLatitude * Math.PI / 180 );
+        return convertGeoToPixel( latitude, longitude, getWidth(), getHeight(),
+                minLongitude, lngExtent, minLatitude,
+                minLatitude * Math.PI / 180 );
     }
 
     private AffineTransform getBackgroundTransform( AffineTransform existing ) {
@@ -181,35 +200,84 @@ public class GpsPanel extends JPanel {
 
         backgroundTransform.translate( dragXOffset, dragYOffset );
 
-        //backgroundTransform.concatenate( existing );
-
         // Scale based on map longitude extent vs points longitude extent
-        double longitudeRange = maxLongitude - minLongitude;
-        double extentScaleFactor = BCKGRND_LNG_EXTENT / longitudeRange;
+        double extentScaleFactor = backgroundLngExtent / lngExtent;
 
         // Window-size-based scale factor
-        double windowScaleFactor = (double)getWidth() / BCKGRND_WIDTH;
+        double windowScaleFactor = (double)getWidth() / backgroundWidth;
 
         double scaleFactor = extentScaleFactor * windowScaleFactor;
         backgroundTransform.scale( scaleFactor, scaleFactor );
 
-        /*
-        // Translate based on longitude
-        double offsetX = ( minLongitude - BCKGRND_MIN_LNG ) * ( getWidth() / lngRange );
-        System.out.println( minLongitude );
-        System.out.println( minLongitude - BCKGRND_MIN_LNG );
-        System.out.println( offsetX );
-        offsetX /= 10;
-        AffineTransform translateTransform =
-            AffineTransform.getTranslateInstance( offsetX, 0 );
-            */
-        Point2D.Double backgroundTopLeft = convertGeoToPixel( BCKGRND_MAX_LAT, BCKGRND_MIN_LNG );
-
+        Point2D.Double backgroundTopLeft = convertGeoToPixel( backgroundMaxLat, backgroundMinLng );
         double offsetX = backgroundTopLeft.x / scaleFactor;
         double offsetY = backgroundTopLeft.y / scaleFactor;
         backgroundTransform.translate( offsetX, offsetY );
 
         return backgroundTransform;
+    }
+
+    /**
+     * Fetches map images from the Google Maps API. Responsible for
+     * creating API calls, performing them, and stitching the results
+     * together. Also calculates the lat/long extrema of the image and
+     * sets the relevant fields.
+     */
+    private BufferedImage fetchMapImage() throws IOException {
+        int zoomLevel = 18;
+        double centerLat = ( minLatitude + maxLatitude ) / 2;
+        double centerLng = ( minLongitude + maxLongitude ) / 2;
+        backgroundWidth = 640;
+        backgroundHeight = 640;
+
+        // Construct URL
+        StringBuilder sb = new StringBuilder( MAPS_API_ENDPOINT );
+        sb.append( '?' );
+        sb.append( "center=" );
+        sb.append( centerLat );
+        sb.append( ',' );
+        sb.append( centerLng );
+        sb.append( "&zoom=" );
+        sb.append( zoomLevel );
+        sb.append( "&size=" );
+        sb.append( backgroundWidth );
+        sb.append( 'x' );
+        sb.append( backgroundHeight );
+
+        double[] centerLeftWorldCoords =
+            GpsHelper.gpsCoordsToWorldCoords( centerLat, minLongitude );
+
+        // Increment the x-coord by the width of the map
+        double[] centerRightWorldCoords = Arrays.copyOf( centerLeftWorldCoords,
+                centerLeftWorldCoords.length );
+        centerRightWorldCoords[0] += backgroundWidth /
+            Math.pow( 2, zoomLevel );
+
+        // Go back to GPS coords to get the longitude extent of this map
+        double[] centerRightGpsCoords =
+            GpsHelper.worldCoordsToGpsCoords( centerRightWorldCoords );
+        backgroundLngExtent = centerRightGpsCoords[1] - minLongitude;
+
+        double[] centerBottomWorldCoords =
+            GpsHelper.gpsCoordsToWorldCoords( minLatitude, centerLng );
+
+        // Increment the y-coord by the height of the map
+        double[] centerTopWorldCoords = Arrays.copyOf( centerBottomWorldCoords,
+                centerBottomWorldCoords.length );
+        centerTopWorldCoords[1] -= backgroundHeight / Math.pow( 2, zoomLevel );
+
+        // Go back to GPS coords to get the latitude extent of this map
+        double[] centerTopGpsCoords =
+            GpsHelper.worldCoordsToGpsCoords( centerTopWorldCoords );
+        backgroundLatExtent = centerTopGpsCoords[0] - minLatitude;
+
+        // Calculate background min/max lat/lng
+        backgroundMinLat = centerLat - backgroundLatExtent / 2;
+        backgroundMaxLat = centerLat + backgroundLatExtent / 2;
+        backgroundMinLng = centerLng - backgroundLngExtent / 2;
+        backgroundMaxLng = centerLng + backgroundLngExtent / 2;
+
+        return ImageIO.read( new URL( sb.toString() ) );
     }
 
     class DragMouseListener extends MouseAdapter {
