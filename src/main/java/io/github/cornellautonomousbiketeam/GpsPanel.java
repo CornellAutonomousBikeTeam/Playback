@@ -290,15 +290,23 @@ public class GpsPanel extends JPanel {
         @Override
         public void mouseWheelMoved( MouseWheelEvent event ) {
             int rotation = event.getWheelRotation();
+            double zoomFactorFactor = 1;
             if( rotation < 0 ) {
 
                 // Wheel was rotated up, zoom in
-                zoomFactor *= 1.1;
+                zoomFactorFactor = 1.1;
             } else if( rotation > 0 ) {
 
                 // Wheel was rotated down, zoom out
-                zoomFactor *= 0.9;
+                zoomFactorFactor = 0.9;
             }
+
+            // Translate the image to compensate for the zoom - we want
+            // to make it look like the image is zooming around the
+            // current mouse position
+            dragXOffset += ( event.getX() - dragXOffset ) * ( 1 - zoomFactorFactor );
+            dragYOffset += ( event.getY() - dragYOffset ) * ( 1 - zoomFactorFactor );
+            zoomFactor *= zoomFactorFactor;
             GpsPanel.this.repaint();
         }
     }
