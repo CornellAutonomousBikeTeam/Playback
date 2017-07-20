@@ -19,4 +19,4 @@ And of the tool displaying some GPS data:
 
   [1]: https://github.com/CornellAutonomousBikeTeam/Playback/releases
   [2]: https://user-images.githubusercontent.com/1981364/27975744-77f1a6b8-6331-11e7-949c-48fe8cc5a42e.png
-  [3]: https://user-images.githubusercontent.com/1981364/27932057-47698852-626a-11e7-8d3b-456b2ec7635a.png
+  [3]: https://user-images.githubusercontent.com/1981364/28427102-1d7cd1dc-6d43-11e7-88ac-852dd79e565b.png
