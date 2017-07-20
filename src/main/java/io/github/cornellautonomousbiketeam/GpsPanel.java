@@ -6,6 +6,7 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
@@ -23,9 +24,11 @@ import io.github.cornellautonomousbiketeam.TimedBikeState;
  * Paints the GPS data.
  */
 public class GpsPanel extends JPanel {
+
+    // List of datapoints
     private List<TimedBikeState> points;
 
-    // Lat/long extents
+    // Lat/long extents of the datapoints
     private float minLatitude;
     private float maxLatitude;
     private float minLongitude;
@@ -33,9 +36,16 @@ public class GpsPanel extends JPanel {
     private float latExtent;
     private float lngExtent;
 
-    // Time extents
+    // Time extents (of the datapoints)
     private Date minTime;
     private Date maxTime;
+
+    // Data image (holding GPS datapoints)
+    private BufferedImage dataImage;
+
+    // Data image dimensions
+    private int dataImageWidth;
+    private int dataImageHeight;
 
     // Background image
     private BufferedImage backgroundImage;
@@ -49,7 +59,6 @@ public class GpsPanel extends JPanel {
     private double backgroundMaxLat;
     private double backgroundMinLng;
     private double backgroundMaxLng;
-
     private double backgroundLatExtent;
     private double backgroundLngExtent;
 
@@ -59,6 +68,9 @@ public class GpsPanel extends JPanel {
     private int dragYOffset;
     private int initialDragXOffset;
     private int initialDragYOffset;
+
+    // State variable for zooming
+    private double zoomFactor = 1;
 
     // API constants
     public static final String MAPS_API_ENDPOINT =
@@ -116,8 +128,10 @@ public class GpsPanel extends JPanel {
             }
         }
 
-        this.addMouseListener( new DragMouseListener() );
-        this.addMouseMotionListener( new DragMouseListener() );
+        MyMouseListener mouseListener = new MyMouseListener();
+        this.addMouseListener( mouseListener );
+        this.addMouseMotionListener( mouseListener );
+        this.addMouseWheelListener( mouseListener );
     }
 
     public void paintComponent( Graphics g ) {
@@ -129,49 +143,21 @@ public class GpsPanel extends JPanel {
         if( backgroundImage != null ) {
             AffineTransform transform = getBackgroundTransform( g2d.getTransform() );
             g2d.drawImage( backgroundImage, transform, null );
-            //g.drawImage( backgroundImage, 0, 0, null );
         }
 
         // Draw GPS points
         g.setColor( Color.BLUE );
-        int displayWidth = getWidth();
-        int displayHeight = 200;
-        double pixelsPerLngDegree = displayWidth / lngExtent;
 
-        double worldMapWidth = ( displayHeight * 360 ) / ( pixelsPerLngDegree * 2 * Math.PI );
-        double maxLatitudeRad = Math.toRadians( maxLatitude );
-        double mapOffsetY = worldMapWidth / 2 * Math.log( ( 1 + Math.sin( maxLatitudeRad ) ) / ( 1 - Math.sin( maxLatitudeRad ) ) );
-
-        double indexToSaturation = 1.0 / points.size();
-        int index = 0;
         for( TimedBikeState state : points ) {
-            int pixelX, pixelY;
-            pixelX = (int)( ( state.xB - minLongitude ) * pixelsPerLngDegree );
-            pixelX = Math.min( pixelX, displayWidth );
-
-            double latitudeRad = Math.toRadians( state.yB );
-            /*
-            int pixelY = displayHeight - (int)( ( ( worldMapWidth / 2.0 * Math.log( ( 1.0 + Math.sin( latitudeRad ) ) / ( 1.0 - Math.sin( latitudeRad ) ) ) ) - mapOffsetY ) );
-            System.out.print( Math.log( ( 1 + Math.sin( latitudeRad ) ) / ( 1 - Math.sin( latitudeRad ) ) ) );
-            pixelY = Math.min( pixelY, getHeight() - 50 );
-            */
-
-            /*
-            double mercN = Math.log( Math.tan( Math.PI / 4 + ( latitudeRad / 2 ) ) );
-            int pixelY = (int)( displayHeight / 2 - displayWidth * mercN / ( 2 * Math.PI ) );
-            */
-            //Point2D.Double pixel = convertGeoToPixel( state.yB, state.xB, displayWidth, displayHeight, minLongitude, longitudeRange, maxLatitude, maxLatitude * Math.PI / 180 );
             Point2D.Double pixel = convertGeoToPixel( state.yB, state.xB );
-            pixelX = (int)pixel.x;
-            pixelY = (int)pixel.y;
-            //System.out.print( String.format( "(%d, %d)  ", pixelX, pixelY ) );
+            int pixelX = (int)pixel.x;
+            int pixelY = (int)pixel.y;
 
-            //g.setColor( new Color( Color.HSBtoRGB( 0.6666666F, (float)( index * indexToSaturation ), 1.0F ) ) );
+            pixelX *= zoomFactor;
+            pixelY *= zoomFactor;
             pixelX += dragXOffset;
             pixelY += dragYOffset;
             g.fillRect( pixelX - 2, pixelY - 2, 4, 4 );
-
-            index++;
         }
     }
 
@@ -198,7 +184,11 @@ public class GpsPanel extends JPanel {
     private AffineTransform getBackgroundTransform( AffineTransform existing ) {
         AffineTransform backgroundTransform = new AffineTransform();
 
+        // Apply drag transformation
         backgroundTransform.translate( dragXOffset, dragYOffset );
+
+        // Apply zooming transformation
+        backgroundTransform.scale( zoomFactor, zoomFactor );
 
         // Scale based on map longitude extent vs points longitude extent
         double extentScaleFactor = backgroundLngExtent / lngExtent;
@@ -209,6 +199,8 @@ public class GpsPanel extends JPanel {
         double scaleFactor = extentScaleFactor * windowScaleFactor;
         backgroundTransform.scale( scaleFactor, scaleFactor );
 
+        // Assume that the top-left corner should be at (0, 0), so
+        // translate it that way
         Point2D.Double backgroundTopLeft = convertGeoToPixel( backgroundMaxLat, backgroundMinLng );
         double offsetX = backgroundTopLeft.x / scaleFactor;
         double offsetY = backgroundTopLeft.y / scaleFactor;
@@ -280,16 +272,33 @@ public class GpsPanel extends JPanel {
         return ImageIO.read( new URL( sb.toString() ) );
     }
 
-    class DragMouseListener extends MouseAdapter {
+    class MyMouseListener extends MouseAdapter {
+        @Override
         public void mousePressed( MouseEvent event ) {
             initialClick = event.getPoint();
             initialDragXOffset = dragXOffset;
             initialDragYOffset = dragYOffset;
         }
 
+        @Override
         public void mouseDragged( MouseEvent event ) {
             dragXOffset = initialDragXOffset + event.getX() - initialClick.x;
             dragYOffset = initialDragYOffset + event.getY() - initialClick.y;
+            GpsPanel.this.repaint();
+        }
+
+        @Override
+        public void mouseWheelMoved( MouseWheelEvent event ) {
+            int rotation = event.getWheelRotation();
+            if( rotation < 0 ) {
+
+                // Wheel was rotated up, zoom in
+                zoomFactor *= 1.1;
+            } else if( rotation > 0 ) {
+
+                // Wheel was rotated down, zoom out
+                zoomFactor *= 0.9;
+            }
             GpsPanel.this.repaint();
         }
     }

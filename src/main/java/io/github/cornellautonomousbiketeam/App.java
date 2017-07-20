@@ -14,6 +14,7 @@ import javax.swing.filechooser.FileSystemView;
 import com.jcraft.jsch.ChannelSftp.LsEntry;
 
 import io.github.cornellautonomousbiketeam.BikeConnection;
+//import io.github.cornellautonomousbiketeam.CsvParser;
 import io.github.cornellautonomousbiketeam.MainWindow;
 import io.github.cornellautonomousbiketeam.TimedBikeState;
 
@@ -25,6 +26,7 @@ public class App {
 
     public static void main( String[] args ) {
         ( new MainWindow() ).setVisible( true );
+        //try { displayCsvInWindow( CsvParser.parseFile( new File( "/home/daniel/Desktop/gps_2017-07-06~~03-28-40-PM.csv" ) ) ); } catch( Exception e ) { e.printStackTrace(); }
     }
 
     static {
