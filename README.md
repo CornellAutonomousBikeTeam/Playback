@@ -5,6 +5,8 @@ Motivation: Bike tests that involve the GPS somehow usually produce CSV files co
 
 This tool has two main functions: downloading CSV files from the bike, and displaying CSV files from anywhere. When you first launch the tool, there are a number of options for viewing CSV files. The "Local CSVs" section lets you view CSVs on your computer; the "Remote CSVs" section lets you download them from the bike. Use the "Refresh List" button to update both sections.
 
+Once you're viewing a CSV file and you can see the map, drag to move around the map, and scroll to zoom.
+
 The easiest way to run this tool is to get the latest JAR file from [the "Releases" section][1]. You'll need Java 8.
 
 You can build this tool with Maven, using the command `mvn package`. It'll make a runnable JAR file in the `target/` folder. 
