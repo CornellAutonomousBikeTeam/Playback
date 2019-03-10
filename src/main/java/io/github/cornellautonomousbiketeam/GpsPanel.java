@@ -1,5 +1,6 @@
 package io.github.cornellautonomousbiketeam;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -113,6 +114,7 @@ public class GpsPanel extends JPanel {
         try {
             backgroundImage = fetchMapImage();
         } catch( IOException e ) {
+            System.err.println( "fetchMapImage failed, reading downloaded image" );
             try {
                 backgroundImage = ImageIO.read( getClass().getResource( "/map.png" ) );
                 backgroundWidth = 1243;
@@ -145,8 +147,12 @@ public class GpsPanel extends JPanel {
             g2d.drawImage( backgroundImage, transform, null );
         }
 
+        int squareSize = (int)( Math.max( 4, 4 * zoomFactor ) );
+
         // Draw GPS points
         g.setColor( Color.BLUE );
+
+        g2d.setStroke( new BasicStroke( 3 ) );
 
         for( TimedBikeState state : points ) {
             Point2D.Double pixel = convertGeoToPixel( state.yB, state.xB );
@@ -157,7 +163,14 @@ public class GpsPanel extends JPanel {
             pixelY *= zoomFactor;
             pixelX += dragXOffset;
             pixelY += dragYOffset;
-            g.fillRect( pixelX - 2, pixelY - 2, 4, 4 );
+            g.fillRect( pixelX - squareSize / 2, pixelY - squareSize / 2, squareSize, squareSize );
+
+            if( App.showVelocityVectors ) {
+                int xDiff = (int)( 50 * state.v * zoomFactor * Math.cos( state.psi + Math.PI / 2 ) );
+                int yDiff = (int)( 50 * state.v * zoomFactor * Math.sin( state.psi + Math.PI / 2 ) );
+
+                g2d.drawLine( pixelX, pixelY, pixelX + xDiff, pixelY + yDiff );
+            }
         }
     }
 
@@ -236,6 +249,9 @@ public class GpsPanel extends JPanel {
         sb.append( 'x' );
         sb.append( backgroundHeight );
 
+        // Hide points of interest (e.g. businesses)
+        sb.append( "&style=feature:poi|visibility:off" );
+
         double[] centerLeftWorldCoords =
             GpsHelper.gpsCoordsToWorldCoords( centerLat, minLongitude );
 
@@ -268,6 +284,8 @@ public class GpsPanel extends JPanel {
         backgroundMaxLat = centerLat + backgroundLatExtent / 2;
         backgroundMinLng = centerLng - backgroundLngExtent / 2;
         backgroundMaxLng = centerLng + backgroundLngExtent / 2;
+
+        System.out.println( "[fetchMapImage()] " + sb.toString() );
 
         return ImageIO.read( new URL( sb.toString() ) );
     }

@@ -16,26 +16,48 @@ import io.github.cornellautonomousbiketeam.TimedBikeState;
  * BikeStates.
  */
 public abstract class CsvParser {
-    public static List<TimedBikeState> parseFile( File csvFile ) throws IOException {
+    /**
+     * Parse a CSV file. simpleFormat is true for simple format, false for
+     * complex format.
+     */
+    public static List<TimedBikeState> parseFile( File csvFile, boolean simpleFormat ) throws IOException {
         List<TimedBikeState> result = new ArrayList<TimedBikeState>();
         String currLine = null;
         BufferedReader reader = new BufferedReader( new FileReader( csvFile ) );
 
         // Skip the first line, since it has the header
-        reader.readLine();
+        if( !simpleFormat ) reader.readLine();
 
         String[] tokens;
-        Date currTimestamp;
+        Date currTimestamp = null;
         float lat;
         float lng;
+
+        // Heading, in radians
+        float psi;
+
+        // Velocity, in meters per second
+        float v;
+
+        // If simple format, use fake dates
+        if( simpleFormat ) currTimestamp = new Date();
+
         while( ( currLine = reader.readLine() ) != null ) {
+            if( currLine.trim().length() == 0 ) continue;
             tokens = currLine.split( "," );
-            if( tokens.length == 0 ) {
-                continue;
+            if( simpleFormat ) {
+                currTimestamp.setTime( currTimestamp.getTime() + 50 );
+                lat = Float.parseFloat( tokens[0] );
+                lng = Float.parseFloat( tokens[1] );
+                psi = 0;
+                v = 0;
+            } else {
+                currTimestamp = new Date( (long)( Float.parseFloat( tokens[0] ) / 1000000 ) );
+                lat = Float.parseFloat( tokens[2] );
+                lng = Float.parseFloat( tokens[3] );
+                psi = (float)Math.toRadians( Float.parseFloat( tokens[9] ) );
+                v = Float.parseFloat( tokens[10] );
             }
-            currTimestamp = new Date( (long)( Float.parseFloat( tokens[0] ) / 1000000 ) );
-            lat = Float.parseFloat( tokens[2] );
-            lng = Float.parseFloat( tokens[3] );
 
             // Some sanity checks
             if( lat < 40 || lat > 50 ) {
@@ -45,7 +67,7 @@ public abstract class CsvParser {
                 continue;
             }
 
-            result.add( new TimedBikeState( currTimestamp, lng, lat ) );
+            result.add( new TimedBikeState( currTimestamp, lng, lat, psi, v ) );
         }
 
         return result;

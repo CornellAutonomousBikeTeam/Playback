@@ -1,6 +1,7 @@
 package io.github.cornellautonomousbiketeam;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
@@ -24,6 +25,8 @@ public class MainWindow {
     private JTextField remoteIpField;
     private JButton remoteRefreshButton;
     private JComboBox<String> recentRemoteComboBox;
+    private JCheckBox velocityCheckBox;
+    private ButtonGroup formatGroup;
 
     private File saveLocation;
 
@@ -103,6 +106,32 @@ public class MainWindow {
         remotePanel.add( remoteIpPanel );
         remotePanel.add( remoteListPanel );
 
+        JPanel optionsPanel = new JPanel( new BorderLayout() );
+        optionsPanel.setBorder( BorderFactory.createCompoundBorder(
+                    BorderFactory.createTitledBorder( "Options" ),
+                    BorderFactory.createEmptyBorder( 5, 5, 5, 5 ) ) );
+        velocityCheckBox = new JCheckBox( "Show velocity vectors" );
+        velocityCheckBox.setSelected( true );
+        velocityCheckBox.setName( "velocityCheckBox" );
+        velocityCheckBox.addActionListener( new GlobalListener() );
+        JPanel optionsFormatPanel = new JPanel();
+        optionsFormatPanel.add( new JLabel( "File format:" ) );
+        formatGroup = new ButtonGroup();
+        JRadioButton simpleFormatOption = new JRadioButton( "Simple (latitude,longitude)" );
+        simpleFormatOption.setActionCommand( "simple" );
+        formatGroup.add( simpleFormatOption );
+        optionsFormatPanel.add( simpleFormatOption );
+        JRadioButton complexFormatOption = new JRadioButton( "Complex (bike team format)" );
+        complexFormatOption.setActionCommand( "complex" );
+        complexFormatOption.setSelected( true );
+        formatGroup.add( complexFormatOption );
+        optionsFormatPanel.add( complexFormatOption );
+        JPanel optionsPanelInner = new JPanel();
+        optionsPanelInner.setLayout( new BoxLayout( optionsPanelInner, BoxLayout.Y_AXIS ) );
+        optionsPanelInner.add( leftJustify( velocityCheckBox ) );
+        optionsPanelInner.add( leftJustify( optionsFormatPanel ) );
+        optionsPanel.add( optionsPanelInner, BorderLayout.WEST );
+
         frame = new JFrame( "Playback - Select CSV" );
         JPanel containerPanel = new JPanel( new BorderLayout() );
         containerPanel.setBorder( BorderFactory.createEmptyBorder( 10, 10, 10, 10 ) );
@@ -111,11 +140,19 @@ public class MainWindow {
         northPanel.add( saveLocPanel );
         northPanel.add( recentLocalPanel );
         northPanel.add( remotePanel );
+        northPanel.add( optionsPanel );
         containerPanel.add( northPanel, BorderLayout.NORTH );
         frame.add( containerPanel );
         frame.pack();
         frame.setLocationByPlatform( true );
         frame.setDefaultCloseOperation( JFrame.DISPOSE_ON_CLOSE );
+    }
+
+    private Component leftJustify( JComponent panel )  {
+        Box  b = Box.createHorizontalBox();
+        b.add( panel );
+        b.add( Box.createHorizontalGlue() );
+        return b;
     }
 
     /**
@@ -197,14 +234,16 @@ public class MainWindow {
         @Override
         public void actionPerformed( ActionEvent event ) {
             Object source = event.getSource();
-            if( source instanceof JButton ) {
-                JButton buttonSource = (JButton)source;
+            if( source instanceof AbstractButton ) {
+                AbstractButton buttonSource = (AbstractButton)source;
                 String buttonName = buttonSource.getName();
                 if( buttonName.equals( "recentLocalOpen" ) ) {
                     try {
                         File csvFile = new File( saveLocation,
                                 (String)recentLocalComboBox.getSelectedItem() );
-                        List<TimedBikeState> bikeStates = CsvParser.parseFile( csvFile );
+                        boolean isSimple = formatGroup.getSelection()
+                                .getActionCommand().equals( "simple" );
+                        List<TimedBikeState> bikeStates = CsvParser.parseFile( csvFile, isSimple );
                         App.displayCsvInWindow( bikeStates );
                     } catch( Exception e ) {
                         e.printStackTrace();
@@ -222,7 +261,7 @@ public class MainWindow {
                             return;
                         }
                         File csvFile = fileChooser.getSelectedFile();
-                        List<TimedBikeState> bikeStates = CsvParser.parseFile( csvFile );
+                        List<TimedBikeState> bikeStates = CsvParser.parseFile( csvFile, false );
                         App.displayCsvInWindow( bikeStates );
                     } catch( IOException e ) {
                         e.printStackTrace();
@@ -245,7 +284,7 @@ public class MainWindow {
                         System.out.println( String.format( "Downloading from %s to %s...", fullRemotePath, localPath ) );
 
                         File csvFile = BikeConnection.copy( "pi", ipAddress, fullRemotePath, localPath );
-                        List<TimedBikeState> bikeStates = CsvParser.parseFile( csvFile );
+                        List<TimedBikeState> bikeStates = CsvParser.parseFile( csvFile, false );
                         App.displayCsvInWindow( bikeStates );
                     } catch( Exception e ) {
                         e.printStackTrace();
@@ -272,6 +311,9 @@ public class MainWindow {
                     }
                     saveLocation = fileChooser.getSelectedFile();
                     refresh( false );
+                } else if( buttonName.equals( "velocityCheckBox" ) ) {
+                    App.showVelocityVectors = velocityCheckBox.isSelected();
+                    System.out.println( App.showVelocityVectors );
                 }
             }
         }

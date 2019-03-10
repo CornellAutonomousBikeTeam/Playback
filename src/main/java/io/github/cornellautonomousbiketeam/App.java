@@ -24,6 +24,10 @@ public class App {
     public static final File DEFAULT_SAVE_FOLDER;
     public static final String DEFAULT_IP_ADDRESS = "10.0.1.25";
 
+    // State variable - whether to show velocity vectors.
+    // Edited by MainWindow
+    public static boolean showVelocityVectors = true;
+
     public static void main( String[] args ) {
         ( new MainWindow() ).setVisible( true );
         //try { displayCsvInWindow( CsvParser.parseFile( new File( "/home/daniel/Desktop/gps_2017-07-06~~03-28-40-PM.csv" ) ) ); } catch( Exception e ) { e.printStackTrace(); }

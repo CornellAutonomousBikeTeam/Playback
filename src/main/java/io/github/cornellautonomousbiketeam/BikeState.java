@@ -19,9 +19,11 @@ public class BikeState {
     /** Speed */
     public float v;
 
-    public BikeState( float x, float y ) {
+    public BikeState( float x, float y, float psi, float v ) {
         this.xB = x;
         this.yB = y;
+        this.psi = psi;
+        this.v = v;
     }
 
     public String toString() {
