@@ -44,7 +44,7 @@ public class MainWindow {
 
     private void buildGui() {
         JPanel saveLocPanel = new JPanel( new BorderLayout() );
-        saveLocPanel.add( new JLabel( "Current save location: " ), BorderLayout.WEST );
+        saveLocPanel.add( new JLabel( "Current CSV location: " ), BorderLayout.WEST );
         saveLocField = new JTextField( 20 );
         saveLocField.setEditable( false );
         saveLocPanel.add( saveLocField, BorderLayout.CENTER );
@@ -244,7 +244,7 @@ public class MainWindow {
                         boolean isSimple = formatGroup.getSelection()
                                 .getActionCommand().equals( "simple" );
                         List<TimedBikeState> bikeStates = CsvParser.parseFile( csvFile, isSimple );
-                        App.displayCsvInWindow( bikeStates );
+                        App.displayCsvInWindow( csvFile.getName(), bikeStates );
                     } catch( Exception e ) {
                         e.printStackTrace();
                         JOptionPane.showMessageDialog( frame,
@@ -262,7 +262,7 @@ public class MainWindow {
                         }
                         File csvFile = fileChooser.getSelectedFile();
                         List<TimedBikeState> bikeStates = CsvParser.parseFile( csvFile, false );
-                        App.displayCsvInWindow( bikeStates );
+                        App.displayCsvInWindow( csvFile.getName(), bikeStates );
                     } catch( IOException e ) {
                         e.printStackTrace();
                     }
@@ -285,7 +285,7 @@ public class MainWindow {
 
                         File csvFile = BikeConnection.copy( "pi", ipAddress, fullRemotePath, localPath );
                         List<TimedBikeState> bikeStates = CsvParser.parseFile( csvFile, false );
-                        App.displayCsvInWindow( bikeStates );
+                        App.displayCsvInWindow( csvFile.getName(), bikeStates );
                     } catch( Exception e ) {
                         e.printStackTrace();
                     }

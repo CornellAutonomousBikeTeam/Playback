@@ -99,8 +99,8 @@ public class App {
         return new File( localPath );
     }
 
-    public static void displayCsvInWindow( List<TimedBikeState> states ) {
-        JFrame frame = new JFrame( "GPS Simulator 2017" );
+    public static void displayCsvInWindow( String source, List<TimedBikeState> states ) {
+        JFrame frame = new JFrame( "GPS Simulator 2017 - " + source );
         JPanel mainPanel = new JPanel( new BorderLayout() );
         mainPanel.setBorder( BorderFactory.createEmptyBorder( 5, 5, 5, 5 ) );
         GpsPanel gpsPanel = new GpsPanel( states );
